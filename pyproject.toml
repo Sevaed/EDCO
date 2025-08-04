@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "edco"                # уникальное имя пакета в PyPI
-version = "1.0"
+version = "1.1"
 description = "EDCO - EDit COnfigs, make your configuration easier"
 readme = "README.md"
 requires-python = ">=3.8"
