@@ -155,24 +155,24 @@ def help(*args):
     C = ASCII_CODES
 
     print(f"""
-{C['BOLD']}Config Manager{C['RESET']} — manage named config files with optional groups and commands
+{C['BOLD']}Config Manager{C['RESET']} — manage named edco files with optional groups and commands
 
 {C['BOLD']}Usage:{C['RESET']}
-  {C['CYAN']}config <name>{C['RESET']}               {C['DIM']}Open config in $EDITOR{C['RESET']}
-  {C['CYAN']}config -p <name>{C['RESET']}            {C['DIM']}Print path to config{C['RESET']}
-  {C['CYAN']}config -c <name>{C['RESET']}            {C['DIM']}Print contents of config file{C['RESET']}
-  {C['CYAN']}config -a <name> <path>{C['RESET']}     {C['DIM']}Add new config{C['RESET']}
+  {C['CYAN']}edco <name>{C['RESET']}               {C['DIM']}Open config in $EDITOR{C['RESET']}
+  {C['CYAN']}edco -p <name>{C['RESET']}            {C['DIM']}Print path to config{C['RESET']}
+  {C['CYAN']}edco -c <name>{C['RESET']}            {C['DIM']}Print contents of config file{C['RESET']}
+  {C['CYAN']}edco -a <name> <path>{C['RESET']}     {C['DIM']}Add new config{C['RESET']}
       [key=value ...]      {C['DIM']}(e.g. group=shells command=\"echo done\"){C['RESET']}
 
-  {C['CYAN']}config -d name <name>{C['RESET']}       {C['DIM']}Delete config by name{C['RESET']}
-  {C['CYAN']}config -d group <group>{C['RESET']}     {C['DIM']}Delete all configs in group (with confirm){C['RESET']}
+  {C['CYAN']}edco -d name <name>{C['RESET']}       {C['DIM']}Delete config by name{C['RESET']}
+  {C['CYAN']}edco -d group <group>{C['RESET']}     {C['DIM']}Delete all configs in group (with confirm){C['RESET']}
 
-  {C['CYAN']}config -n{C['RESET']}                   {C['DIM']}Show all configs (grouped){C['RESET']}
-  {C['CYAN']}config -h{C['RESET']}                   {C['DIM']}Show this help message{C['RESET']}
+  {C['CYAN']}edco -n{C['RESET']}                   {C['DIM']}Show all configs (grouped){C['RESET']}
+  {C['CYAN']}edco -h{C['RESET']}                   {C['DIM']}Show this help message{C['RESET']}
 
 {C['BOLD']}Examples:{C['RESET']}
-  {C['GREEN']}config -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C['RESET']}
-  {C['GREEN']}config fish{C['RESET']}                      {C['DIM']}Opens config named 'fish' in your editor{C['RESET']}
-  {C['GREEN']}config -d group shells{C['RESET']}           {C['DIM']}Prompts before deleting all configs in 'shells'{C['RESET']}
+  {C['GREEN']}edco -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C['RESET']}
+  {C['GREEN']}edco fish{C['RESET']}                      {C['DIM']}Opens config named 'fish' in your editor{C['RESET']}
+  {C['GREEN']}edco -d group shells{C['RESET']}           {C['DIM']}Prompts before deleting all configs in 'shells'{C['RESET']}
 """)
     exit(0)
