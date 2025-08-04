@@ -2,7 +2,7 @@ import json
 import os
 from typing import Union
 
-def get_data(mode)-> Union[dict]:
+def get_data(mode):
     path = os.path.expanduser("~/.config/EDCO.json")
     if os.path.exists(path):
         pass
