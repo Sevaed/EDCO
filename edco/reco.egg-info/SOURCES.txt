@@ -1,0 +1,12 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+reco/completions/_config
+reco/completions/config
+reco/completions/config.fish
+reco/reco.egg-info/PKG-INFO
+reco/reco.egg-info/SOURCES.txt
+reco/reco.egg-info/dependency_links.txt
+reco/reco.egg-info/entry_points.txt
+reco/reco.egg-info/top_level.txt

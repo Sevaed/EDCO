@@ -1,0 +1,12 @@
+# Bash‐completion for `config` (репозиторий edco-config-manager)
+_config_completion() {
+    local cur commands names
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    commands="-p -c -a -n -h --help -d --_list-names --install-completion"
+    # Получаем список имён из вашего скрипта
+    names=$(config --_list-names 2>/dev/null)
+    COMPREPLY=( $(compgen -W "${commands} ${names}" -- "$cur") )
+}
+complete -F _config_completion config
+

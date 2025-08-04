@@ -1,0 +1,7 @@
+#compdef config
+# Zsh‐completion for `config` (репозиторий reco-config-manager)
+
+autoload -U +X bashcompinit && bashcompinit
+# Подключаем Bash‐функцию из того же файла
+source "${0:A:h}/config"
+
