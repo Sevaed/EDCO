@@ -5,7 +5,7 @@ import curses
 from curses import wrapper
 
 def run_tui():
-    data = get_data("data")
+    data = get_data()
 
     def data_to_TUIdata(data={}):
         groups = {}

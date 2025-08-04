@@ -1,22 +1,18 @@
 import json
 import os
-from typing import Union
 
-def get_data(mode):
-    path = os.path.expanduser("~/.config/EDCO.json")
-    if os.path.exists(path):
-        pass
-    else:
+
+PATH_TO_CONFIG = "~/.config/EDCO.json"
+
+def get_data() -> dict:
+    
+    path = os.path.expanduser(PATH_TO_CONFIG)
+    if not os.path.exists(path):
         with open(path, "w") as file:
             json.dump({"EDCO":{"path":path}}, file)
-        print("File ~/.config/EDCO.json was created.")
+        print(f"File {PATH_TO_CONFIG} was created.")
+    with open(path) as file:
+        data = json.load(file)
+    return data
 
-    if mode == "data":
-        with open(path) as file:
-            data = json.load(file)
-        return data
-    elif mode == "path":
-        return path
-    else:
-        exit(0)
         

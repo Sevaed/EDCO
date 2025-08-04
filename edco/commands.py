@@ -1,11 +1,13 @@
 from edco.data import get_data
+from edco.data import PATH_TO_CONFIG
 
 import subprocess
 import os
 import sys
 import json
+from pathlib import Path
 
-CONFIG_PATH = get_data("path")
+
 EDITOR = str(os.environ.get("EDITOR", "nvim"))
 ASCII_CODES = {
     "RESET": "\033[0m",
@@ -16,7 +18,7 @@ ASCII_CODES = {
     "GREEN": "\033[32m",
 }
 
-data = get_data("data")
+data = get_data()
 
 def list_names():
     names = data.keys()
@@ -24,7 +26,7 @@ def list_names():
     sys.exit(0)
 
 def rewrite():
-    with open(CONFIG_PATH, "w") as config:
+    with open(PATH_TO_CONFIG, "w") as config:
         json.dump(data, config)
 
 
@@ -49,6 +51,9 @@ def edit_config(*args):
 
 def name_not_found():
     exit("Name not found")
+
+def flag_not_found(flag: str):
+    exit(f"Flag: {flag} not exists\n'edco -h' for help")
 
 
 def get_path(name=""):
