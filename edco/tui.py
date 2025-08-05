@@ -4,10 +4,13 @@ from edco.commands import edit_config
 import curses
 from curses import wrapper
 
+import sys
+
+
 def run_tui():
     data = get_data()
 
-    def data_to_TUIdata(data={}):
+    def data_to_groups(data: dict) -> dict:
         groups = {}
         ungroup = []
         for i in data:
@@ -22,7 +25,7 @@ def run_tui():
         groups["nogroup"] = ungroup
         return groups
 
-    groups = data_to_TUIdata(data)
+    groups = data_to_groups(data)
 
     UP = [curses.KEY_UP, ord("k"), ord("w")]
     DOWN = [curses.KEY_DOWN, ord("j"), ord("s")]
@@ -42,23 +45,49 @@ def run_tui():
         blocks = []
 
         def draw_menu():
+            def is_not_enough_space(block_width: int):
+                if x + block_width > max_x:
+                    return True
+                else:
+                    return False
+
+            max_y, max_x = stdscr.getmaxyx()
             blocks.clear()
             stdscr.clear()
+            y = 2
             x = 2
-            maxlen = 0
+            next_maxwith = 0
+            next_maxheight = 0
             for count, name in enumerate(groups.keys()):
-                x += maxlen
-                y = 2
+                block_width = len(max(groups[name], key=len))
+                cur_y = stdscr.getyx()[0]
+                if is_not_enough_space(block_width):
+                    if len(groups[name]) + cur_y + 1 > max_y:
+                        curses.endwin()
+                        exit("too small")
+                    y += next_maxheight
+                    x = 2
+                    next_maxwith = 0
+                x += next_maxwith + 2
+
+                maxheight = 0
+                maxwith = 0
+
+                group_string = "▼ " + name
                 if name != "nogroup":
-                    stdscr.addstr(y, x, "▼ " + name, curses.color_pair(1))
+                    stdscr.addstr(y, x, group_string, curses.color_pair(1))
                     col = 2
                 elif groups[name]:
-                    stdscr.addstr(y, x, "▼ " + name, curses.color_pair(3))
+                    stdscr.addstr(y, x, group_string, curses.color_pair(3))
                     col = 4
                 else:
                     col = 2
+
+                if len(group_string) > maxwith:
+                    maxwith = len(group_string)
+
                 for counto, obj in enumerate(groups[name]):
-                    blocks.append(([count, counto], name))
+                    blocks.append(([count, counto], name, obj))
                     if counto != len(groups[name]) - 1:
                         line = "├── " + obj
                     else:
@@ -68,8 +97,11 @@ def run_tui():
                     else:
                         stdscr.addstr(y + counto + 1, x, line, curses.color_pair(col))
 
-                    if len(line) > maxlen:
-                        maxlen = len(line)
+                if len(max(groups[name], key=len)) + 4 > maxwith:
+                    maxwith = len(max(groups[name], key=len)) + 4
+
+                next_maxheight = maxheight
+                next_maxwith = maxwith
 
         draw_menu()
 
@@ -78,7 +110,7 @@ def run_tui():
 
             def name_of_position(pos):
                 for i in blocks:
-                    if pos in i:
+                    if pos == i[0]:
                         return groups[i[1]][i[0][1]]
                 exit(1)
 
@@ -130,19 +162,30 @@ def run_tui():
                 elif is_right_exist(current_choice):
                     rows = len(groups[name_of_pos_group(current_choice[0] + 1)]) - 1
                     current_choice = [current_choice[0] + 1, rows]
+                else:
+                    for i in blocks:
+                        if [0, current_choice[1]] in i:
+                            current_choice = [0, current_choice[1]]
+                            draw_menu()
+                            break
+                    else:
+                        current_choice = [0, 0]
             if key in LEFT:
                 if is_left_choice_exist(current_choice):
                     current_choice[0] -= 1
                 elif is_left_exist(current_choice):
                     rows = len(groups[name_of_pos_group(current_choice[0] - 1)]) - 1
                     current_choice = [current_choice[0] - 1, rows]
+                elif current_choice[1] == blocks[-1][0][1]:
+                    current_choice = [blocks[-1][0][0], current_choice[1]]
+                else:
+                    current_choice = [blocks[-1][0][0], 0]
             if key in ENTER:
                 edit_config(name_of_position(current_choice))
                 exit()
             if key in EXIT:
-                exit(0)
+                return
 
             draw_menu()
 
     wrapper(main)
-
