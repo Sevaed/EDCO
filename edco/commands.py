@@ -5,7 +5,6 @@ import subprocess
 import os
 import sys
 import json
-from pathlib import Path
 
 
 EDITOR = str(os.environ.get("EDITOR", "nvim"))
@@ -20,10 +19,12 @@ ASCII_CODES = {
 
 data = get_data()
 
+
 def list_names():
     names = data.keys()
     print(" ".join(names))
     sys.exit(0)
+
 
 def rewrite():
     with open(PATH_TO_CONFIG, "w") as config:
@@ -51,6 +52,7 @@ def edit_config(*args):
 
 def name_not_found():
     exit("Name not found")
+
 
 def flag_not_found(flag: str):
     exit(f"Flag: {flag} not exists\n'edco -h' for help")
@@ -135,7 +137,6 @@ def names(*args):
     C = ASCII_CODES
     COLOR_GROUP = f"{C['BOLD']}{C['CYAN']}"
     COLOR_CONFIG = C["GREEN"]
-    COLOR_FIELD = C["DIM"]
     RESET = C["RESET"]
 
     for name, config in data.items():

@@ -32,7 +32,7 @@ def data_to_groups(data: dict) -> dict:
 groups = data_to_groups(get_data())
 
 
-class element:
+class Element:
     def __init__(self, y: int, x: int, group: str, name: str, is_last: bool):
         self.y = y
         self.x = x
@@ -44,7 +44,7 @@ class element:
             self.disp_name = "├── " + name
 
 
-class column:
+class Column:
     def __init__(self, x: int, start_y: int, group: str):
         self.x = x
         self.name_y = start_y
@@ -59,38 +59,43 @@ class column:
             else:
                 is_last = False
             self.elements.append(
-                element(start_y + count+1, x, group, el, is_last))
+                Element(start_y + count+1, x, group, el, is_last))
             if len(self.elements[-1].disp_name) > self.width:
                 self.width = len(self.elements[-1].disp_name)
 
 
-class screen:
+class Screen:
     def __init__(self, groups: dict, term_size: list):
         y = 2
         x = 2
-        term_y, term_x = term_size
+        term_x = term_size[1]
         columns = []
-        self.row_height: int = 0
+        self.row_height = {0: 0}
+        curr_row = 0
         for group in groups:
-            col = column(x, y, group)
+            print(group)
+            col = Column(x, y, group)
             if col.x + col.width > term_x:
-                y += self.row_height + 2
+                print("Not enought space")
+                y += self.row_height[curr_row] + 2
                 x = 2
-                col = column(x, y, group)
-                self.row_height: int = col.height
+                col = Column(x, y, group)
+                curr_row += 1
+                self.row_height[curr_row] = col.height
+                x += col.width + 2
             else:
-                if col.height > self.row_height:
-                    self.row_height = col.height
+                if col.height > self.row_height[curr_row]:
+                    self.row_height[curr_row] = col.height
                 x += col.width + 2
             columns.append(col)
+            print(col.name_y, col.x)
+            print(curr_row, col.height)
         self.columns = columns
 
 
 def run_tui():
-    tyst = screen(groups, [50, 50])
-    test = screen(groups, [50, 50]).columns
-    for i in test:
-        print(i.x, i.name_y, i.width, i.height, tyst.row_height)
+
+    # test = Screen(groups, [50, 30])
 
     def main(stdscr):
 
@@ -103,13 +108,13 @@ def run_tui():
         def draw_menu():
             stdscr.clear()
             term_size = stdscr.getmaxyx()
-            to_draw = screen(groups, term_size)
-            for column in to_draw.columns:
-                group = column.group
+            to_draw = Screen(groups, term_size)
+            for Column in to_draw.columns:
+                group = Column.group
                 group_name = "▼ "+group
-                group_y = column.name_y
-                group_x = column.x
-                elements = column.elements
+                group_y = Column.name_y
+                group_x = Column.x
+                elements = Column.elements
                 if group == "ungroup":
                     color = 4
                 else:
@@ -133,4 +138,4 @@ def run_tui():
             if key in EXIT:
                 exit()
 
-    # wrapper(main)
+    wrapper(main)
