@@ -4,188 +4,133 @@ from edco.commands import edit_config
 import curses
 from curses import wrapper
 
-import sys
+UP = [curses.KEY_UP, ord("k"), ord("w")]
+DOWN = [curses.KEY_DOWN, ord("j"), ord("s")]
+RIGHT = [curses.KEY_RIGHT, ord("l"), ord("d")]
+LEFT = [curses.KEY_LEFT, ord("h"), ord("a")]
+ENTER = [curses.KEY_ENTER, 10, 13, ord(" ")]
+EXIT = [ord("q")]
+
+
+def data_to_groups(data: dict) -> dict:
+    groups = {}
+    ungroup = []
+    for element in data:
+        if "group" in data[element]:
+            group = data[element]["group"]
+            if group not in groups:
+                groups[group] = []
+            groups[group].append(element)
+        else:
+            ungroup.append(element)
+    groups = dict(
+        sorted(groups.items(), key=lambda item: (-len(item[1]), item[0])))
+    groups["ungroup"] = ungroup
+    return groups
+
+
+groups = data_to_groups(get_data())
+
+
+class element:
+    def __init__(self, y: int, x: int, group: str, name: str, is_last: bool):
+        self.y = y
+        self.x = x
+        self.group = group
+        self.name = name
+        if is_last:
+            self.disp_name = "└── " + name
+        else:
+            self.disp_name = "├── " + name
+
+
+class column:
+    def __init__(self, x: int, start_y: int, group: str):
+        self.x = x
+        self.name_y = start_y
+        self.group = group
+        self.width = len(group)+2
+        self.height: int = 1
+        self.elements = []
+        for count, el in enumerate(groups[group]):
+            self.height += 1
+            if count == len(groups[group])-1:
+                is_last = True
+            else:
+                is_last = False
+            self.elements.append(
+                element(start_y + count+1, x, group, el, is_last))
+            if len(self.elements[-1].disp_name) > self.width:
+                self.width = len(self.elements[-1].disp_name)
+
+
+class screen:
+    def __init__(self, groups: dict, term_size: list):
+        y = 2
+        x = 2
+        term_y, term_x = term_size
+        columns = []
+        self.row_height: int = 0
+        for group in groups:
+            col = column(x, y, group)
+            if col.x + col.width > term_x:
+                y += self.row_height + 2
+                x = 2
+                col = column(x, y, group)
+                self.row_height: int = col.height
+            else:
+                if col.height > self.row_height:
+                    self.row_height = col.height
+                x += col.width + 2
+            columns.append(col)
+        self.columns = columns
 
 
 def run_tui():
-    data = get_data()
-
-    def data_to_groups(data: dict) -> dict:
-        groups = {}
-        ungroup = []
-        for i in data:
-            if "group" in data[i]:
-                group = data[i]["group"]
-                if group not in groups:
-                    groups[group] = []
-                groups[group].append(i)
-            else:
-                ungroup.append(i)
-        groups = dict(sorted(groups.items(), key=lambda item: (-len(item[1]), item[0])))
-        groups["nogroup"] = ungroup
-        return groups
-
-    groups = data_to_groups(data)
-
-    UP = [curses.KEY_UP, ord("k"), ord("w")]
-    DOWN = [curses.KEY_DOWN, ord("j"), ord("s")]
-    RIGHT = [curses.KEY_RIGHT, ord("l"), ord("d")]
-    LEFT = [curses.KEY_LEFT, ord("h"), ord("a")]
-    ENTER = [curses.KEY_ENTER, 10, 13, ord(" ")]
-    EXIT = [ord("q")]
+    tyst = screen(groups, [50, 50])
+    test = screen(groups, [50, 50]).columns
+    for i in test:
+        print(i.x, i.name_y, i.width, i.height, tyst.row_height)
 
     def main(stdscr):
+
         curses.curs_set(0)
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
         curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
         curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
 
-        current_choice = [0, 0]
-        blocks = []
-
         def draw_menu():
-            def is_not_enough_space(block_width: int):
-                if x + block_width > max_x:
-                    return True
-                else:
-                    return False
-
-            max_y, max_x = stdscr.getmaxyx()
-            blocks.clear()
             stdscr.clear()
-            y = 2
-            x = 2
-            next_maxwith = 0
-            next_maxheight = 0
-            for count, name in enumerate(groups.keys()):
-                block_width = len(max(groups[name], key=len))
-                cur_y = stdscr.getyx()[0]
-                if is_not_enough_space(block_width):
-                    if len(groups[name]) + cur_y + 1 > max_y:
-                        curses.endwin()
-                        exit("too small")
-                    y += next_maxheight
-                    x = 2
-                    next_maxwith = 0
-                x += next_maxwith + 2
-
-                maxheight = 0
-                maxwith = 0
-
-                group_string = "▼ " + name
-                if name != "nogroup":
-                    stdscr.addstr(y, x, group_string, curses.color_pair(1))
-                    col = 2
-                elif groups[name]:
-                    stdscr.addstr(y, x, group_string, curses.color_pair(3))
-                    col = 4
+            term_size = stdscr.getmaxyx()
+            to_draw = screen(groups, term_size)
+            for column in to_draw.columns:
+                group = column.group
+                group_name = "▼ "+group
+                group_y = column.name_y
+                group_x = column.x
+                elements = column.elements
+                if group == "ungroup":
+                    color = 4
                 else:
-                    col = 2
+                    color = 2
+                stdscr.addstr(group_y, group_x, group_name,
+                              curses.color_pair(color - 1))
+                for element in elements:
+                    el_x = element.x
+                    el_y = element.y
+                    el_name = element.disp_name
 
-                if len(group_string) > maxwith:
-                    maxwith = len(group_string)
-
-                for counto, obj in enumerate(groups[name]):
-                    blocks.append(([count, counto], name, obj))
-                    if counto != len(groups[name]) - 1:
-                        line = "├── " + obj
-                    else:
-                        line = "└── " + obj
-                    if [count, counto] == current_choice:
-                        stdscr.addstr(y + counto + 1, x, line, curses.A_REVERSE)
-                    else:
-                        stdscr.addstr(y + counto + 1, x, line, curses.color_pair(col))
-
-                if len(max(groups[name], key=len)) + 4 > maxwith:
-                    maxwith = len(max(groups[name], key=len)) + 4
-
-                next_maxheight = maxheight
-                next_maxwith = maxwith
-
+                    stdscr.addstr(el_y, el_x, el_name,
+                                  curses.color_pair(color))
+            stdscr.refresh()
         draw_menu()
 
         while True:
             key = stdscr.getch()
-
-            def name_of_position(pos):
-                for i in blocks:
-                    if pos == i[0]:
-                        return groups[i[1]][i[0][1]]
-                exit(1)
-
-            name_of_current_group = ""
-            for i in blocks:
-                if current_choice == i[0]:
-                    name_of_current_group = i[1]
-
-            def name_of_pos_group(numb):
-                for i in blocks:
-                    if i[0][0] == numb:
-                        return i[1]
-                exit(1)
-
-            def is_right_exist(pos):
-                for i in blocks:
-                    if pos[0] + 1 == i[0][0]:
-                        return True
-                return False
-
-            def is_left_exist(pos):
-                for i in blocks:
-                    if pos[0] - 1 == i[0][0]:
-                        return True
-                return False
-
-            def is_right_choice_exist(pos):
-                for i in blocks:
-                    if [pos[0] + 1, pos[1]] in i:
-                        return True
-                return False
-
-            def is_left_choice_exist(pos):
-                for i in blocks:
-                    if [pos[0] - 1, pos[1]] in i:
-                        return True
-                return False
-
-            if key in UP and current_choice[1] != 0:
-                current_choice[1] -= 1
-            if (
-                key in DOWN
-                and current_choice[1] != len(groups[name_of_current_group]) - 1
-            ):
-                current_choice[1] += 1
-            if key in RIGHT:
-                if is_right_choice_exist(current_choice):
-                    current_choice[0] += 1
-                elif is_right_exist(current_choice):
-                    rows = len(groups[name_of_pos_group(current_choice[0] + 1)]) - 1
-                    current_choice = [current_choice[0] + 1, rows]
-                else:
-                    for i in blocks:
-                        if [0, current_choice[1]] in i:
-                            current_choice = [0, current_choice[1]]
-                            draw_menu()
-                            break
-                    else:
-                        current_choice = [0, 0]
-            if key in LEFT:
-                if is_left_choice_exist(current_choice):
-                    current_choice[0] -= 1
-                elif is_left_exist(current_choice):
-                    rows = len(groups[name_of_pos_group(current_choice[0] - 1)]) - 1
-                    current_choice = [current_choice[0] - 1, rows]
-                elif current_choice[1] == blocks[-1][0][1]:
-                    current_choice = [blocks[-1][0][0], current_choice[1]]
-                else:
-                    current_choice = [blocks[-1][0][0], 0]
-            if key in ENTER:
-                edit_config(name_of_position(current_choice))
-                exit()
-            if key in EXIT:
-                return
-
             draw_menu()
 
-    wrapper(main)
+            if key in EXIT:
+                exit()
+
+    # wrapper(main)
