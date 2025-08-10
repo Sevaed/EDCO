@@ -30,6 +30,7 @@ def data_to_groups(data: dict) -> dict:
 
 
 groups = data_to_groups(get_data())
+curr_curs_cords = [0, 0]
 
 
 class Element:
@@ -38,6 +39,7 @@ class Element:
         self.x = x
         self.group = group
         self.name = name
+        self.curs_cords = []
         if is_last:
             self.disp_name = "└── " + name
         else:
@@ -71,33 +73,94 @@ class Screen:
         term_x = term_size[1]
         columns = []
         self.row_height = {0: 0}
+        curs_y = 0
+        curs_x = 0
         curr_row = 0
+        curs_cords = {}
+
         for group in groups:
-            print(group)
             col = Column(x, y, group)
+            for element in col.elements:
+                element.curs_cords = [curs_y, curs_x]
+                curs_y += 1
+                curs_cords[curs_x] = curs_y
             if col.x + col.width > term_x:
-                print("Not enought space")
                 y += self.row_height[curr_row] + 2
                 x = 2
                 col = Column(x, y, group)
                 curr_row += 1
                 self.row_height[curr_row] = col.height
                 x += col.width + 2
+                curs_x = 0
+                curs_y = curs_cords[curs_x]
+                for element in col.elements:
+                    element.curs_cords = [curs_y, curs_x]
+                    curs_y += 1
+                    curs_cords[curs_x] = curs_y
+
             else:
                 if col.height > self.row_height[curr_row]:
                     self.row_height[curr_row] = col.height
                 x += col.width + 2
+                curs_y = 0
+                curs_x += 1
             columns.append(col)
-            print(col.name_y, col.x)
-            print(curr_row, col.height)
         self.columns = columns
+
+
+class controls:
+    def __init__(self, elements):
+        self.elements = elements
+        self.cords = []
+        for element in elements:
+            self.cords.append(element.curs_cords)
+
+    def is_exist(self, direct: str, choice: bool) -> bool:
+        pos = curr_curs_cords
+        upper = [[pos[0]-1, pos[1]], pos[0]-1]
+        downer = [[pos[0]+1, pos[1]], pos[0]+1]
+        righter = [[pos[0], pos[1]+1], pos[1]+1]
+        lefter = [[pos[0], pos[1]-1], pos[1]-1]
+        cords = self.cords
+        if choice:
+            if direct == "up" and upper[0] in cords:
+                return True
+            if direct == "down" and downer[0] in cords:
+                return True
+            if direct == "right" and righter[0] in cords:
+                return True
+            if direct == "left" and lefter[0] in cords:
+                return True
+            return False
+        else:
+            up_down = []
+            right_left = []
+            for cord in cords:
+                up_down.append(cord[0])
+                right_left.append(cord[1])
+            if direct == "up" and upper[1] in up_down:
+                return True
+            if direct == "down" and downer[1] in up_down:
+                return True
+            if direct == "right" and righter[1] in right_left:
+                return True
+            if direct == "left" and lefter[1] in right_left:
+                return True
+            return False
+
+    def get_name(self):
+        pos = curr_curs_cords
+        for element in self.elements:
+            if pos == element.curs_cords:
+                return element.name
 
 
 def run_tui():
 
-    # test = Screen(groups, [50, 30])
+    # test = Screen(groups, [50, 50])
 
     def main(stdscr):
+        curr_screen = None
 
         curses.curs_set(0)
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
@@ -106,9 +169,11 @@ def run_tui():
         curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
 
         def draw_menu():
+            nonlocal curr_screen
             stdscr.clear()
             term_size = stdscr.getmaxyx()
             to_draw = Screen(groups, term_size)
+            curr_screen = to_draw
             for Column in to_draw.columns:
                 group = Column.group
                 group_name = "▼ "+group
@@ -126,16 +191,43 @@ def run_tui():
                     el_y = element.y
                     el_name = element.disp_name
 
-                    stdscr.addstr(el_y, el_x, el_name,
-                                  curses.color_pair(color))
+                    if curr_curs_cords == element.curs_cords:
+                        stdscr.addstr(el_y, el_x, el_name, curses.A_REVERSE)
+                    else:
+                        stdscr.addstr(el_y, el_x, el_name,
+                                      curses.color_pair(color))
             stdscr.refresh()
         draw_menu()
 
         while True:
+            elements = []
+            if curr_screen is None:
+                exit("sys")
+            for column in curr_screen.columns:
+                for element in column.elements:
+                    elements.append(element)
+            contr = controls(elements)
             key = stdscr.getch()
-            draw_menu()
+
+            if key in UP:
+                if contr.is_exist("up", True):
+                    curr_curs_cords[0] -= 1
+            if key in DOWN:
+                if contr.is_exist("down", True):
+                    curr_curs_cords[0] += 1
+            if key in RIGHT:
+                if contr.is_exist("right", True):
+                    curr_curs_cords[1] += 1
+            if key in LEFT:
+                if contr.is_exist("left", True):
+                    curr_curs_cords[1] -= 1
+
+            if key in ENTER:
+                edit_config(contr.get_name())
 
             if key in EXIT:
                 exit()
+
+            draw_menu()
 
     wrapper(main)
