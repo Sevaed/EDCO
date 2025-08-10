@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "edco"                # уникальное имя пакета в PyPI
-version = "1.2"
+dynamic = ["version"]
 description = "EDCO - EDit COnfigs, make your configuration easier"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -18,7 +18,7 @@ classifiers = [
 dependencies = []            # перечислите ваши зависимости, если они есть
 
 [project.scripts]
-edco = "edco.__main__:main"  # точка входа для `reco`
+edco = "edco.__main__:main"  # точка входа для `edco`
 
 [tool.setuptools]
 include-package-data = true
