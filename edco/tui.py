@@ -218,7 +218,7 @@ def run_tui():
             elements = []
             if curr_screen is None:
                 exit("sys")
-            for column in curr_screen.columns:
+            for column in curr_screen.columns:  # type: ignore
                 for element in column.elements:
                     elements.append(element)
             contr = Controls(elements)
