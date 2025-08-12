@@ -13,6 +13,13 @@ EXIT = [ord("q")]
 
 
 def data_to_groups(data: dict) -> dict:
+    """
+    Gets raw json EDCO config data
+    returns dict with structure {
+    group_name: list of elements
+    ungroup: list of elements without group
+    }
+    """
     groups = {}
     ungroup = []
     for element in data:
@@ -23,15 +30,23 @@ def data_to_groups(data: dict) -> dict:
             groups[group].append(element)
         else:
             ungroup.append(element)
+    
+    # sorting groups by:
+    # - item's name length 
+    # - after that by first digit in alphabetical sorting
     groups = dict(
-        sorted(groups.items(), key=lambda item: (-len(item[1]), item[0])))
+        sorted(groups.items(), 
+               key=lambda item: (-len(item[1]), item[0])
+               )
+    )
+
     groups["ungroup"] = ungroup
     return groups
 
 
+
 groups = data_to_groups(get_data())
 curr_curs_cords = [0, 0]
-
 
 class Element:
     def __init__(self, y: int, x: int, group: str, name: str, is_last: bool):
@@ -108,7 +123,7 @@ class Screen:
         self.columns = columns
 
 
-class controls:
+class Controls:
     def __init__(self, elements):
         self.elements = elements
         self.cords = []
@@ -206,7 +221,7 @@ def run_tui():
             for column in curr_screen.columns:
                 for element in column.elements:
                     elements.append(element)
-            contr = controls(elements)
+            contr = Controls(elements)
             key = stdscr.getch()
 
             if key in UP:
