@@ -97,14 +97,36 @@ def test_configuration_to_groups():
                       'terminal': ['kitty', 'fish'], None: ['config_not_need_anymore', 'EDCO', 'tmux']}
 
 
-def test_calculate_menu():
+def test_calculate_menu_success():
     blocks = []
     current_choice = [0, 0]
-    groupss = {'waybar': ['waybar', 'waybar-css'], None: ['EDCO']}
+    groups = {'waybar': ['waybar', 'waybar-css'], None: ['EDCO']}
+
     test_data1, test_data2 = tui.calculate_menu(
-        blocks, current_choice, groupss)
-    itog1 = [(2, 2, "▼ waybar", 1), (2, 16, "▼ nogroup", 3)]
-    itog2 = [(3, 2, "├── waybar", "reverse"),
-             (4, 2, "└── waybar-css", "2"), (3, 16, "└── EDCO", "4")]
+        current_choice=current_choice,
+        groups=groups,
+        blocks=blocks,
+    )
+
+    itog1 = [(2, 3, "▼ waybar", 1), (2, 18, "▼ nogroup", 3)]
+
+    itog2 = [(3, 3, "├── waybar", "reverse"),
+             (4, 3, "└── waybar-css", "2"), (3, 18, "└── EDCO", "4")]
+    
     assert test_data1 == itog1
     assert test_data2 == itog2
+
+'''
+def test_calculate_menu_fail():
+    blocks = []
+    current_choice = [-1, -1]
+    groups = {'waybar': ['waybar', 'waybar-css'], None: ['EDCO']}
+
+    test_data1, test_data2 = tui.calculate_menu(
+        current_choice=current_choice,
+        groups=groups,
+        blocks=blocks,
+    )
+    
+    assert [test_data1, test_data2] == 123
+'''

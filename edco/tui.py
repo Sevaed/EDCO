@@ -37,11 +37,12 @@ def run_tui():
     wrapper(main, groups)
 
 
-def calculate_menu(current_choice, groups, blocks):
-    drawable_groups = []
-    drawable_items = []
+def calculate_menu(current_choice: list[int], groups: dict[str, list[str]], blocks: list) -> tuple[list[tuple[int, int, str, int]], list[tuple[int, int, str, str]]]:
+    drawable_groups: list[tuple[int, int, str, int]] = [] 
+    drawable_items: list[tuple[int, int, str, str]] = []
     blocks.clear()
     x = 2
+    
     last_maximum_lenght = 0
     for group_index, group_name in enumerate(groups.keys()):
         current_maximum_lenght = 0
