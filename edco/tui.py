@@ -46,7 +46,7 @@ def data_to_groups(data: dict) -> dict:
 
 
 groups = data_to_groups(get_data())
-curr_curs_cords = [0, 0]
+curr_curs_cords = [0, 0, 0]
 
 class Element:
     def __init__(self, y: int, x: int, group: str, name: str, is_last: bool):
@@ -95,8 +95,10 @@ class Screen:
 
         for group in groups:
             col = Column(x, y, group)
+            if curs_x in curs_cords:
+                curs_y = curs_cords[curs_x]
             for element in col.elements:
-                element.curs_cords = [curs_y, curs_x]
+                element.curs_cords = [curs_y, curs_x, curr_row]
                 curs_y += 1
                 curs_cords[curs_x] = curs_y
             if col.x + col.width > term_x:
@@ -109,7 +111,7 @@ class Screen:
                 curs_x = 0
                 curs_y = curs_cords[curs_x]
                 for element in col.elements:
-                    element.curs_cords = [curs_y, curs_x]
+                    element.curs_cords = [curs_y, curs_x, curr_row]
                     curs_y += 1
                     curs_cords[curs_x] = curs_y
 
@@ -118,7 +120,10 @@ class Screen:
                     self.row_height[curr_row] = col.height
                 x += col.width + 2
                 curs_y = 0
-                curs_x += 1
+            curs_x += 1
+            print(group)
+            for i in col.elements:
+                print(i.curs_cords)
             columns.append(col)
         self.columns = columns
 
@@ -129,39 +134,26 @@ class Controls:
         self.cords = []
         for element in elements:
             self.cords.append(element.curs_cords)
+        only_curs_cords = []
+        for something in self.cords:
+            only_curs_cords.append([something[0], something[1]])
 
-    def is_exist(self, direct: str, choice: bool) -> bool:
+    def move_cursor(self, direct: str):
+        global curr_curs_cords
         pos = curr_curs_cords
         upper = [[pos[0]-1, pos[1]], pos[0]-1]
         downer = [[pos[0]+1, pos[1]], pos[0]+1]
         righter = [[pos[0], pos[1]+1], pos[1]+1]
         lefter = [[pos[0], pos[1]-1], pos[1]-1]
         cords = self.cords
-        if choice:
-            if direct == "up" and upper[0] in cords:
-                return True
-            if direct == "down" and downer[0] in cords:
-                return True
-            if direct == "right" and righter[0] in cords:
-                return True
-            if direct == "left" and lefter[0] in cords:
-                return True
-            return False
-        else:
-            up_down = []
-            right_left = []
-            for cord in cords:
-                up_down.append(cord[0])
-                right_left.append(cord[1])
-            if direct == "up" and upper[1] in up_down:
-                return True
-            if direct == "down" and downer[1] in up_down:
-                return True
-            if direct == "right" and righter[1] in right_left:
-                return True
-            if direct == "left" and lefter[1] in right_left:
-                return True
-            return False
+        if direct == "up" and upper in cords:
+            curr_curs_cords = upper
+        if direct == "down" and downer in cords:
+            curr_curs_cords = downer
+        if direct == "right" and righter in cords:
+            curr_curs_cords = righter
+        if direct == "left" and lefter in cords:
+            curr_curs_cords = lefter
 
     def get_name(self):
         pos = curr_curs_cords
@@ -172,7 +164,7 @@ class Controls:
 
 def run_tui():
 
-    # test = Screen(groups, [50, 50])
+    test = Screen(groups, [57, 61])
 
     def main(stdscr):
         curr_screen = None
@@ -225,17 +217,13 @@ def run_tui():
             key = stdscr.getch()
 
             if key in UP:
-                if contr.is_exist("up", True):
-                    curr_curs_cords[0] -= 1
+                contr.move_cursor("up")
             if key in DOWN:
-                if contr.is_exist("down", True):
-                    curr_curs_cords[0] += 1
+                contr.move_cursor("down")
             if key in RIGHT:
-                if contr.is_exist("right", True):
-                    curr_curs_cords[1] += 1
+                contr.move_cursor("roght")
             if key in LEFT:
-                if contr.is_exist("left", True):
-                    curr_curs_cords[1] -= 1
+                contr.move_cursor("left")
 
             if key in ENTER:
                 edit_config(contr.get_name())
