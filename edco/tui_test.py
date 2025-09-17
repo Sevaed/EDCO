@@ -90,7 +90,7 @@ def test_configuration_to_groups():
         }
     }
 
-    groups = tui.configuration_to_groups(configuration)
+    groups = tui.configuration_to_app_groups(configuration)
 
     assert groups == {'hyprland': ['keybindings', 'windowrule', 'hypr-solya', 'autostart', 'hypr-base', 'hyprland'], 'nvim': ['nvim_options', 'nvim_plugins',
                                                                                                                               'nvim_lsp', 'nvim'], 'waybar': ['waybar-css', 'waybar'],
@@ -104,8 +104,8 @@ def test_calculate_menu_success():
 
     test_data1, test_data2 = tui.calculate_menu(
         current_choice=current_choice,
-        groups=groups,
-        blocks=blocks,
+        app_groups=groups,
+        apps=blocks,
     )
 
     itog1 = [(2, 3, "▼ waybar", 1), (2, 18, "▼ nogroup", 3)]
