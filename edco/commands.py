@@ -1,11 +1,11 @@
-from edco.data import get_data
+from os.path import abspath
+from edco.data import get_apps_data
 from edco.data import PATH_TO_CONFIG
 
 import subprocess
 import os
 import sys
 import json
-
 
 EDITOR = str(os.environ.get("EDITOR", "nvim"))
 ASCII_CODES = {
@@ -17,21 +17,21 @@ ASCII_CODES = {
     "GREEN": "\033[32m",
 }
 
-data = get_data()
+apps_data = get_apps_data()
 
 
-def list_names():
-    names = data.keys()
+def list_apps_print_names():
+    names = apps_data.keys()
     print(" ".join(names))
     sys.exit(0)
 
 
-def rewrite():
+def rewrite_config_file():
     with open(PATH_TO_CONFIG, "w") as config:
-        json.dump(data, config)
+        json.dump(apps_data, config)
 
 
-def is_enough(args, numb=0):
+def is_enough_args(args, numb=0):
     if len(args) >= numb:
         return True
     else:
@@ -39,91 +39,81 @@ def is_enough(args, numb=0):
         exit("Not enough elements")
 
 
-def edit_config(*args):
-    is_enough(args, 1)
-    if args[0] not in data:
+def edit_app_config(*args):
+    is_enough_args(args, 1)
+    name = args[0]
+    if len(args) == 2:
+        editor = args[1]
+    else:
+        editor = EDITOR
+    if name not in apps_data:
         name_not_found()
     else:
-        path = get_path(args[0])
-        subprocess.call([EDITOR, path])
-        if "command" in data[args[0]]:
-            subprocess.call(data[args[0]]["command"])
+        path = get_app_path(name)
+        subprocess.call([editor, path])
 
 
 def name_not_found():
     exit("Name not found")
 
 
-def flag_not_found(flag: str):
-    exit(f"Flag: {flag} not exists\n'edco -h' for help")
+def get_app_path(name):
+    return apps_data[name]["path"]
 
 
-def get_path(name=""):
-    return data[name]["path"]
-
-
-def path(*args):
-    is_enough(args, 1)
-    name = args[0]
-    if name in data:
-        print(get_path(name))
+def path(name):
+    if name in apps_data:
+        print(get_app_path(name))
     else:
         name_not_found()
 
 
-def cat(*args):
-    is_enough(args, 1)
-    name = args[0]
-    with open(get_path(name), "r") as config:
+def cat(name):
+    with open(get_app_path(name), "r") as config:
         print(config.read())
 
 
-def add_element(*args):
-    is_enough(args, 2)
-    conf = len(args)
+def add_app(*args):
+    is_enough_args(args, 2)
     name = args[0]
     path = args[1]
-    if name in data:
-        print("This name already taken")
-        exit(1)
-    if 2 < conf < 5:
-        if "=" not in args[2] or (conf > 3 and "=" not in args[3]) or conf > 4:
-            help()
-    if conf == 3:
-        k, v = args[2].split("=", 1)
-        data[name] = {"path": path, k: v}
-    elif conf == 4:
-        k, v = args[2].split("=", 1)
-        val3 = args[3].split("=", 1)[1]
-        if k == "group":
-            data[name] = {"path": path, "group": v, "command": val3}
-        else:
-            data[name] = {"path": path, "group": val3, "command": v}
+    if len(args) == 3:
+        group = args[2]
     else:
-        data[name] = {"path": path}
-    rewrite()
+        group = None
+
+    if name in apps_data:
+        exit("This name already taken")
+    if not group:
+        apps_data[name] = {"path": os.path.abspath(path)}
+    else:
+        apps_data[name] = {"path": os.path.abspath(path), "group": group}
+    rewrite_config_file()
     print(f"{path} was saved as {name}")
 
 
-def del_smth(*args):
-    is_enough(args, 2)
-    if args[0] == "name" and args[1] in data:
-        print(data[args[1]]["path"] + " was removed")
-        data.pop(args[1])
-        rewrite()
-    elif args[0] == "group":
-        group = args[1]
+def del_elements(type_of_element, name_of_element):
+    if type_of_element == "name" and name_of_element in apps_data:
+        print(
+            f"{name_of_element}({apps_data[name_of_element]['path']}) was removed from apps list"
+        )
+        apps_data.pop(name_of_element)
+        rewrite_config_file()
+    elif type_of_element == "group":
+        group = name_of_element
         to_remove = []
-        for i in data:
-            if group == data[i].get("group"):
+        for i in apps_data:
+            if group == apps_data[i].get("group"):
                 to_remove.append(i)
-                print(i + " will be removed")
+                print(i + " will be removed from apps list")
+        if not to_remove:
+            exit("This group is not exist")
         while True:
-            ask = input(f"Remove all files in group {group}? y/N")
+            ask = input(f"Remove all files in group {group}? y/N\n")
             if ask in ["y", "Y", "yes", "Yes", "YES"]:
                 for i in to_remove:
-                    data.pop(i)
-                rewrite()
+                    apps_data.pop(i)
+                rewrite_config_file()
                 exit(0)
             elif ask in ["", "n", "N", "no", "No", "NO"]:
                 exit(0)
@@ -131,7 +121,7 @@ def del_smth(*args):
         help()
 
 
-def names(*args):
+def print_names():
     groups = {}
     no_group = []
     C = ASCII_CODES
@@ -139,7 +129,7 @@ def names(*args):
     COLOR_CONFIG = C["GREEN"]
     RESET = C["RESET"]
 
-    for name, config in data.items():
+    for name, config in apps_data.items():
         group = config.get("group")
         if group is None:
             no_group.append((name, config))
@@ -157,28 +147,29 @@ def names(*args):
             print(f"  {COLOR_CONFIG}{branch} {name}{RESET}")
 
 
-def help(*args):
-    C = ASCII_CODES
-
-    print(f"""
-{C['BOLD']}Config Manager{C['RESET']} — manage named edco files with optional groups and commands
-
-{C['BOLD']}Usage:{C['RESET']}
-  {C['CYAN']}edco <name>{C['RESET']}               {C['DIM']}Open config in $EDITOR{C['RESET']}
-  {C['CYAN']}edco -p <name>{C['RESET']}            {C['DIM']}Print path to config{C['RESET']}
-  {C['CYAN']}edco -c <name>{C['RESET']}            {C['DIM']}Print contents of config file{C['RESET']}
-  {C['CYAN']}edco -a <name> <path>{C['RESET']}     {C['DIM']}Add new config{C['RESET']}
-      [key=value ...]      {C['DIM']}(e.g. group=shells command=\"echo done\"){C['RESET']}
-
-  {C['CYAN']}edco -d name <name>{C['RESET']}       {C['DIM']}Delete config by name{C['RESET']}
-  {C['CYAN']}edco -d group <group>{C['RESET']}     {C['DIM']}Delete all configs in group (with confirm){C['RESET']}
-
-  {C['CYAN']}edco -n{C['RESET']}                   {C['DIM']}Show all configs (grouped){C['RESET']}
-  {C['CYAN']}edco -h{C['RESET']}                   {C['DIM']}Show this help message{C['RESET']}
-
-{C['BOLD']}Examples:{C['RESET']}
-  {C['GREEN']}edco -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C['RESET']}
-  {C['GREEN']}edco fish{C['RESET']}                      {C['DIM']}Opens config named 'fish' in your editor{C['RESET']}
-  {C['GREEN']}edco -d group shells{C['RESET']}           {C['DIM']}Prompts before deleting all configs in 'shells'{C['RESET']}
-""")
-    exit(0)
+# TODO redo
+# def help(*args):
+#     C = ASCII_CODES
+#
+#     print(f"""
+# {C['BOLD']}Config Manager{C['RESET']} — manage named edco files with optional groups and commands
+#
+# {C['BOLD']}Usage:{C['RESET']}
+#   {C['CYAN']}edco <name>{C['RESET']}               {C['DIM']}Open config in $EDITOR{C['RESET']}
+#   {C['CYAN']}edco -p <name>{C['RESET']}            {C['DIM']}Print path to config{C['RESET']}
+#   {C['CYAN']}edco -c <name>{C['RESET']}            {C['DIM']}Print contents of config file{C['RESET']}
+#   {C['CYAN']}edco -a <name> <path>{C['RESET']}     {C['DIM']}Add new config{C['RESET']}
+#       [key=value ...]      {C['DIM']}(e.g. group=shells command=\"echo done\"){C['RESET']}
+#
+#   {C['CYAN']}edco -d name <name>{C['RESET']}       {C['DIM']}Delete config by name{C['RESET']}
+#   {C['CYAN']}edco -d group <group>{C['RESET']}     {C['DIM']}Delete all configs in group (with confirm){C['RESET']}
+#
+#   {C['CYAN']}edco -n{C['RESET']}                   {C['DIM']}Show all configs (grouped){C['RESET']}
+#   {C['CYAN']}edco -h{C['RESET']}                   {C['DIM']}Show this help message{C['RESET']}
+#
+# {C['BOLD']}Examples:{C['RESET']}
+#   {C['GREEN']}edco -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C['RESET']}
+#   {C['GREEN']}edco fish{C['RESET']}                      {C['DIM']}Opens config named 'fish' in your editor{C['RESET']}
+#   {C['GREEN']}edco -d group shells{C['RESET']}           {C['DIM']}Prompts before deleting all configs in 'shells'{C['RESET']}
+# """)
+#     exit(0)

@@ -1,12 +1,10 @@
 import json
 import os
 
+PATH_TO_CONFIG = os.path.expanduser("~/.config/EDCO.json")
 
-PATH_TO_CONFIG = "~/.config/EDCO.json"
 
-
-def get_data() -> dict:
-
+def get_apps_data() -> dict:
     path = os.path.expanduser(PATH_TO_CONFIG)
     if not os.path.exists(path):
         with open(path, "w") as file:
