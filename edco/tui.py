@@ -1,3 +1,5 @@
-# TODO learn smth and make tui
+import blessed
+
+
 def run_tui():
     pass
