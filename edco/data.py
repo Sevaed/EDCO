@@ -1,8 +1,14 @@
 import json
 import os
 
-
-PATH_TO_CONFIG = "~/.config/EDCO.json"
+xdg_config_home = os.getenv("XDG_CONFIG_HOME")
+home = os.getenv("HOME")
+if xdg_config_home:
+    PATH_TO_CONFIG = os.path.join(xdg_config_home, "EDCO.json")
+elif home:
+    PATH_TO_CONFIG = os.path.join(home, ".config/EDCO.json")
+else:
+    exit("For some reason your system does not have $HOME")
 
 
 def get_data() -> dict:

@@ -5,10 +5,9 @@ import subprocess
 import os
 import sys
 import json
-from pathlib import Path
 
 
-EDITOR = str(os.environ.get("EDITOR", "nvim"))
+EDITOR = str(os.environ.get("EDITOR", "vim"))
 ASCII_CODES = {
     "RESET": "\033[0m",
     "BOLD": "\033[1m",
@@ -20,10 +19,12 @@ ASCII_CODES = {
 
 data = get_data()
 
+
 def list_names():
     names = data.keys()
     print(" ".join(names))
     sys.exit(0)
+
 
 def rewrite():
     with open(PATH_TO_CONFIG, "w") as config:
@@ -51,6 +52,7 @@ def edit_config(*args):
 
 def name_not_found():
     exit("Name not found")
+
 
 def flag_not_found(flag: str):
     exit(f"Flag: {flag} not exists\n'edco -h' for help")
@@ -81,6 +83,7 @@ def add_element(*args):
     conf = len(args)
     name = args[0]
     path = args[1]
+    path = os.path.abspath(os.path.expanduser(path))
     if name in data:
         print("This name already taken")
         exit(1)
@@ -135,7 +138,6 @@ def names(*args):
     C = ASCII_CODES
     COLOR_GROUP = f"{C['BOLD']}{C['CYAN']}"
     COLOR_CONFIG = C["GREEN"]
-    COLOR_FIELD = C["DIM"]
     RESET = C["RESET"]
 
     for name, config in data.items():
@@ -160,24 +162,24 @@ def help(*args):
     C = ASCII_CODES
 
     print(f"""
-{C['BOLD']}Config Manager{C['RESET']} — manage named edco files with optional groups and commands
+{C["BOLD"]}Config Manager{C["RESET"]} — manage named edco files with optional groups and commands
 
-{C['BOLD']}Usage:{C['RESET']}
-  {C['CYAN']}edco <name>{C['RESET']}               {C['DIM']}Open config in $EDITOR{C['RESET']}
-  {C['CYAN']}edco -p <name>{C['RESET']}            {C['DIM']}Print path to config{C['RESET']}
-  {C['CYAN']}edco -c <name>{C['RESET']}            {C['DIM']}Print contents of config file{C['RESET']}
-  {C['CYAN']}edco -a <name> <path>{C['RESET']}     {C['DIM']}Add new config{C['RESET']}
-      [key=value ...]      {C['DIM']}(e.g. group=shells command=\"echo done\"){C['RESET']}
+{C["BOLD"]}Usage:{C["RESET"]}
+  {C["CYAN"]}edco <name>{C["RESET"]}               {C["DIM"]}Open config in $EDITOR{C["RESET"]}
+  {C["CYAN"]}edco -p <name>{C["RESET"]}            {C["DIM"]}Print path to config{C["RESET"]}
+  {C["CYAN"]}edco -c <name>{C["RESET"]}            {C["DIM"]}Print contents of config file{C["RESET"]}
+  {C["CYAN"]}edco -a <name> <path>{C["RESET"]}     {C["DIM"]}Add new config{C["RESET"]}
+      [key=value ...]      {C["DIM"]}(e.g. group=shells command=\"echo done\"){C["RESET"]}
 
-  {C['CYAN']}edco -d name <name>{C['RESET']}       {C['DIM']}Delete config by name{C['RESET']}
-  {C['CYAN']}edco -d group <group>{C['RESET']}     {C['DIM']}Delete all configs in group (with confirm){C['RESET']}
+  {C["CYAN"]}edco -d name <name>{C["RESET"]}       {C["DIM"]}Delete config by name{C["RESET"]}
+  {C["CYAN"]}edco -d group <group>{C["RESET"]}     {C["DIM"]}Delete all configs in group (with confirm){C["RESET"]}
 
-  {C['CYAN']}edco -n{C['RESET']}                   {C['DIM']}Show all configs (grouped){C['RESET']}
-  {C['CYAN']}edco -h{C['RESET']}                   {C['DIM']}Show this help message{C['RESET']}
+  {C["CYAN"]}edco -n{C["RESET"]}                   {C["DIM"]}Show all configs (grouped){C["RESET"]}
+  {C["CYAN"]}edco -h{C["RESET"]}                   {C["DIM"]}Show this help message{C["RESET"]}
 
-{C['BOLD']}Examples:{C['RESET']}
-  {C['GREEN']}edco -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C['RESET']}
-  {C['GREEN']}edco fish{C['RESET']}                      {C['DIM']}Opens config named 'fish' in your editor{C['RESET']}
-  {C['GREEN']}edco -d group shells{C['RESET']}           {C['DIM']}Prompts before deleting all configs in 'shells'{C['RESET']}
+{C["BOLD"]}Examples:{C["RESET"]}
+  {C["GREEN"]}edco -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C["RESET"]}
+  {C["GREEN"]}edco fish{C["RESET"]}                      {C["DIM"]}Opens config named 'fish' in your editor{C["RESET"]}
+  {C["GREEN"]}edco -d group shells{C["RESET"]}           {C["DIM"]}Prompts before deleting all configs in 'shells'{C["RESET"]}
 """)
     exit(0)
