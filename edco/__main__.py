@@ -3,7 +3,7 @@ from . import tui
 from . import data
 import sys
 
-def main(args: list[str]):
+def main(args):
     if len(args) == 0:
         tui.run_tui()
     elif args[0] == "--_list-names":
