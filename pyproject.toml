@@ -3,22 +3,22 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "edco"                # уникальное имя пакета в PyPI
+name = "edco"
 dynamic = ["version"]
-description = "EDCO - EDit COnfigs, make your configuration easier"
+description = "EDCO - EDit COnfigs, makes your configuration easier"
 readme = "README.md"
 requires-python = ">=3.8"
-authors = [{name="Sevaed", email="seva.romanovsky@gmail.com"}]
-license = {text="MIT"}
+authors = [{ name = "Sevaed", email = "seva.romanovsky@gmail.com" }]
+license = { text = "MIT" }
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent",
+  "Operating System :: Linux",
 ]
-dependencies = []            # перечислите ваши зависимости, если они есть
+dependencies = ["click", "click_help_colors"]
 
 [project.scripts]
-edco = "edco.__main__:main"  # точка входа для `edco`
+edco = "edco.__main__:main"
 
 [tool.setuptools]
 include-package-data = true
@@ -29,5 +29,4 @@ include = ["edco", "edco.*"]
 
 [tool.setuptools.package-data]
 "edco" = ["pyrightconfig.json"]
-"edco.completions" = ["*"]   # чтобы включить все файлы автодополнения
-
+"edco.completions" = ["*"]

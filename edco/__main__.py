@@ -1,24 +1,29 @@
 from . import commands as cmd
+
 from . import tui
-from . import data
 import click
-import sys
+from click_help_colors import HelpColorsCommand
 
 CONTEXT_SETTINGS = dict(
     token_normalize_func=lambda x: x.lower(), help_option_names=["-h", "--help"]
 )
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+    cls=HelpColorsCommand,
+    help_headers_color="blue",
+    help_options_color="cyan",
+)
 @click.argument("app_name", required=False)
 @click.option(
-    "-e",
-    "--editor",
-    "editor",
-    type=str,
-    help="editor to use, for example: nvim, /usr/sbin/vim",
-    metavar="<editor>",
+    "-i",
+    "--infinite",
+    "infinite",
+    is_flag=True,
+    help="TUI will not close after closing editor",
 )
+@click.option("-l", "--list", "list", is_flag=True, help="shows you yours added apps")
 @click.option(
     "-c",
     "--cat",
@@ -35,7 +40,14 @@ CONTEXT_SETTINGS = dict(
     help="shows you path of given config",
     metavar="<app_name>",
 )
-@click.option("-l", "--list", "list", is_flag=True, help="shows you yours added apps")
+@click.option(
+    "-e",
+    "--editor",
+    "editor",
+    type=str,
+    help="editor to use, for example: nvim, /usr/sbin/vim",
+    metavar="<editor>",
+)
 @click.option(
     "-d",
     "--delete",
@@ -48,6 +60,22 @@ CONTEXT_SETTINGS = dict(
     "-dg",
     "--delete-group",
     "delete_group",
+    type=str,
+    help="deletes all apps in group <group> from apps_list",
+    metavar="<group_name>",
+)
+@click.option(
+    "-df",
+    "--delete-force",
+    "force_delete",
+    type=str,
+    help="deletes yours app from apps_list",
+    metavar="<app_name>",
+)
+@click.option(
+    "-dgf",
+    "--delete-group-force",
+    "force_delete_group",
     type=str,
     help="deletes all apps in group <group> from apps_list",
     metavar="<group_name>",
@@ -68,7 +96,20 @@ CONTEXT_SETTINGS = dict(
     help="provides group for --add if needed",
     metavar="<group_name>",
 )
-def main(app_name, editor, cat, path, list, delete, delete_group, add, group):
+def main(
+    app_name,
+    editor,
+    cat,
+    path,
+    list,
+    delete,
+    add,
+    group,
+    delete_group,
+    force_delete,
+    force_delete_group,
+    infinite,
+):
     """
     (Better help in future)\n
     Use without arguments to summon TUI, use with app_name to edit config for given app
@@ -76,7 +117,20 @@ def main(app_name, editor, cat, path, list, delete, delete_group, add, group):
     sum_of_options = sum(
         map(
             bool,
-            [app_name, editor, cat, path, list, delete, delete_group, add, group],
+            [
+                infinite,
+                app_name,
+                editor,
+                cat,
+                path,
+                list,
+                delete,
+                add,
+                group,
+                delete_group,
+                force_delete,
+                force_delete_group,
+            ],
         )
     )
     if sum_of_options == 0:
@@ -84,6 +138,8 @@ def main(app_name, editor, cat, path, list, delete, delete_group, add, group):
     elif sum_of_options > 2:
         raise click.UsageError("Too many options")
     elif sum_of_options == 1:
+        if infinite:
+            tui.run_tui(True)
         if group:
             raise click.UsageError(
                 "--group cannot be used without --add, use --help for usage"
@@ -106,6 +162,10 @@ def main(app_name, editor, cat, path, list, delete, delete_group, add, group):
             cmd.del_elements("group", delete_group)
         if add:
             cmd.add_app(add[1], add[0])
+        if force_delete:
+            cmd.del_elements("name", force_delete, True)
+        if force_delete_group:
+            cmd.del_elements("group", force_delete_group, True)
     else:
         if app_name and editor:
             cmd.edit_app_config(app_name, editor)

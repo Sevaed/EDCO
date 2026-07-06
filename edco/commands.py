@@ -1,4 +1,4 @@
-from os.path import abspath
+# from os.path import abspath
 from edco.data import get_apps_data
 from edco.data import PATH_TO_CONFIG
 
@@ -15,9 +15,10 @@ ASCII_CODES = {
     "CYAN": "\033[36m",
     "YELLOW": "\033[33m",
     "GREEN": "\033[32m",
+    "RED": "\033[1;31m",
 }
 
-apps_data = get_apps_data()
+apps_data = get_apps_data()["apps"]
 
 
 def list_apps_print_names():
@@ -27,8 +28,10 @@ def list_apps_print_names():
 
 
 def rewrite_config_file():
+    prev = get_apps_data()
+    prev["apps"] = apps_data
     with open(PATH_TO_CONFIG, "w") as config:
-        json.dump(apps_data, config)
+        json.dump(prev, config)
 
 
 def is_enough_args(args, numb=0):
@@ -39,18 +42,18 @@ def is_enough_args(args, numb=0):
         exit("Not enough elements")
 
 
-def edit_app_config(*args):
-    is_enough_args(args, 1)
-    name = args[0]
-    if len(args) == 2:
-        editor = args[1]
-    else:
-        editor = EDITOR
+def do_backup():
+    exit("TODO")
+
+
+def edit_app_config(name, editor=EDITOR):
     if name not in apps_data:
         name_not_found()
     else:
         path = get_app_path(name)
         subprocess.call([editor, path])
+    if get_apps_data()["backup"] != "none":
+        do_backup()
 
 
 def name_not_found():
@@ -58,7 +61,7 @@ def name_not_found():
 
 
 def get_app_path(name):
-    return apps_data[name]["path"]
+    return os.path.expanduser(apps_data[name]["path"])
 
 
 def path(name):
@@ -92,24 +95,54 @@ def add_app(*args):
     print(f"{path} was saved as {name}")
 
 
-def del_elements(type_of_element, name_of_element):
+def del_elements(type_of_element, name_of_element, force=False):
     if type_of_element == "name" and name_of_element in apps_data:
-        print(
-            f"{name_of_element}({apps_data[name_of_element]['path']}) was removed from apps list"
-        )
-        apps_data.pop(name_of_element)
-        rewrite_config_file()
+        if force:
+            print(
+                f"{name_of_element} ({apps_data[name_of_element]['path']}) was removed from apps list"
+            )
+            apps_data.pop(name_of_element)
+            rewrite_config_file()
+            exit(0)
+        while True:
+            ask = input(
+                f"\nRemove {ASCII_CODES['RED']}{name_of_element}{ASCII_CODES['RESET']}? [y/N] "
+            )
+            if ask in ["y", "Y", "yes", "Yes", "YES"]:
+                print(
+                    f"{name_of_element} ({apps_data[name_of_element]['path']}) was removed from apps list"
+                )
+                apps_data.pop(name_of_element)
+                rewrite_config_file()
+                exit(0)
+            elif ask in ["", "n", "N", "no", "No", "NO"]:
+                exit(0)
     elif type_of_element == "group":
         group = name_of_element
         to_remove = []
         for i in apps_data:
             if group == apps_data[i].get("group"):
                 to_remove.append(i)
-                print(i + " will be removed from apps list")
+                if not force:
+                    print(
+                        f"{ASCII_CODES['RED']}{i}{ASCII_CODES['RESET']}"
+                        + " will be removed from apps list"
+                    )
+                else:
+                    print(
+                        f"{ASCII_CODES['RED']}{i}{ASCII_CODES['RESET']}"
+                        + " is removed from apps list"
+                    )
         if not to_remove:
             exit("This group is not exist")
+        if force:
+            for i in to_remove:
+                apps_data.pop(i)
+            rewrite_config_file()
+            exit(0)
+
         while True:
-            ask = input(f"Remove all files in group {group}? y/N\n")
+            ask = input(f"\nRemove all files in group {group}? [y/N] ")
             if ask in ["y", "Y", "yes", "Yes", "YES"]:
                 for i in to_remove:
                     apps_data.pop(i)
@@ -118,7 +151,7 @@ def del_elements(type_of_element, name_of_element):
             elif ask in ["", "n", "N", "no", "No", "NO"]:
                 exit(0)
     else:
-        help()
+        exit(f"{name_of_element}, is not found")
 
 
 def print_names():
@@ -144,32 +177,4 @@ def print_names():
         items = groups[group]
         for i, (name, cfg) in enumerate(sorted(items)):
             branch = "└──" if i == len(items) - 1 else "├──"
-            print(f"  {COLOR_CONFIG}{branch} {name}{RESET}")
-
-
-# TODO redo
-# def help(*args):
-#     C = ASCII_CODES
-#
-#     print(f"""
-# {C['BOLD']}Config Manager{C['RESET']} — manage named edco files with optional groups and commands
-#
-# {C['BOLD']}Usage:{C['RESET']}
-#   {C['CYAN']}edco <name>{C['RESET']}               {C['DIM']}Open config in $EDITOR{C['RESET']}
-#   {C['CYAN']}edco -p <name>{C['RESET']}            {C['DIM']}Print path to config{C['RESET']}
-#   {C['CYAN']}edco -c <name>{C['RESET']}            {C['DIM']}Print contents of config file{C['RESET']}
-#   {C['CYAN']}edco -a <name> <path>{C['RESET']}     {C['DIM']}Add new config{C['RESET']}
-#       [key=value ...]      {C['DIM']}(e.g. group=shells command=\"echo done\"){C['RESET']}
-#
-#   {C['CYAN']}edco -d name <name>{C['RESET']}       {C['DIM']}Delete config by name{C['RESET']}
-#   {C['CYAN']}edco -d group <group>{C['RESET']}     {C['DIM']}Delete all configs in group (with confirm){C['RESET']}
-#
-#   {C['CYAN']}edco -n{C['RESET']}                   {C['DIM']}Show all configs (grouped){C['RESET']}
-#   {C['CYAN']}edco -h{C['RESET']}                   {C['DIM']}Show this help message{C['RESET']}
-#
-# {C['BOLD']}Examples:{C['RESET']}
-#   {C['GREEN']}edco -a kitty ~/.config/kitty/kitty.conf command=\"kill -SIGUSR1 $(pgrep kitty)\"{C['RESET']}
-#   {C['GREEN']}edco fish{C['RESET']}                      {C['DIM']}Opens config named 'fish' in your editor{C['RESET']}
-#   {C['GREEN']}edco -d group shells{C['RESET']}           {C['DIM']}Prompts before deleting all configs in 'shells'{C['RESET']}
-# """)
-#     exit(0)
+            print(f"{COLOR_CONFIG}{branch} {name}{RESET}")
