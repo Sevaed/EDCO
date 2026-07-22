@@ -1,9 +1,0 @@
-{
-  "include": ["reco"],
-  "executionEnvironments": [
-    {
-      "root": "./reco"
-    }
-  ]
-}
-

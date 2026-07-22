@@ -1,6 +1,5 @@
-from edco.data import get_data
-from edco.commands import edit_config
-
+from . import commands
+from . import data
 import curses
 from curses import wrapper
 
@@ -10,180 +9,256 @@ DOWN = [curses.KEY_DOWN, ord("j"), ord("s")]
 RIGHT = [curses.KEY_RIGHT, ord("l"), ord("d")]
 LEFT = [curses.KEY_LEFT, ord("h"), ord("a")]
 ENTER = [curses.KEY_ENTER, 10, 13, ord(" ")]
-EXIT = [ord("q")]
+EXIT = [ord("q"), 27]
+
+MAX_NAME_LENGTH = 15
+X_MARGIN, Y_MARGIN = 2, 2
+
+SEPARATOR = "-"
+
+COLORS = {"groups": 1, "NoGroup": 3, "apps": 2, "NoGroup_apps": 4}
 
 
-def configuration_to_app_groups(configuration={}):
-    app_groups = {}
+apps_data = data.get_apps_data()
+backup_config = data.get_backup_config()
 
-    for app_name, app_data in configuration.items():
-        app_group_name = app_data.get("group")
-        if app_groups.setdefault(app_group_name, [app_name]) != [app_name]:
-            app_groups[app_group_name].append(app_name)
-    ungroupped = app_groups.pop(None)
+debug = []
 
-    app_groups = dict(
-        sorted(app_groups.items(), key=lambda item: len(item[1]), reverse=True)
+app_name = ""
+
+
+def generate_groups(apps_data: dict) -> dict:
+    groups = {}
+    for app_name, app in apps_data.items():
+        group = app.get("group", "NoGroup")
+        if group not in groups:
+            groups[group] = []
+        groups[group].append(app_name)
+    pre_sorted_groups = dict(
+        sorted(groups.items(), key=lambda element: len(element[1]), reverse=True)
     )
-    app_groups[None] = ungroupped
-    for group in app_groups:
-        app_groups[group] = list(
-            sorted(app_groups[group], key=len, reverse=True))
+    if list(pre_sorted_groups.keys())[0] != "NoGroup":
+        pre_sorted_groups["NoGroup"] = pre_sorted_groups.pop("NoGroup")
+    groups = pre_sorted_groups
+    for group in groups.items():
+        groups[group[0]] = sorted(group[1], key=lambda el: len(el), reverse=True)
+    for group_name, group in groups.items():
+        for index, app_name in enumerate(group):
+            if len(app_name) > MAX_NAME_LENGTH + 3:
+                groups[group_name][index] = app_name[:MAX_NAME_LENGTH] + "..."
+    return groups
 
-    return app_groups
 
-
-def calculate_menu(current_choice: list[int], app_groups: dict[str, list[str]], apps: list) -> tuple[list[tuple[int, int, str, int]], list[tuple[int, int, str, str]]]:
-    drawable_app_groups: list[tuple[int, int, str, int]] = []
-    drawable_apps: list[tuple[int, int, str, str]] = []
-    apps.clear()
-    x = 2
-
-    lenght_of_last_collumn = 0
-    for app_group_index, app_group_name in enumerate(app_groups.keys()):
-        current_maximum_lenght = 0
-        x += lenght_of_last_collumn + 1
-        y = 2
-        if app_group_name is None:
-            current_app_group_name = "▼ nogroup"
-            drawable_app_groups.append((y, x, current_app_group_name, 3))
-            color = 4
-        elif app_groups[app_group_name]:
-            current_app_group_name = "▼ " + app_group_name
-            drawable_app_groups.append((y, x, current_app_group_name, 1))
-            color = 2
+def generate_lines(groups: dict, size: tuple[int, int]) -> list[dict]:
+    max_y, max_x = size
+    lines = [{"length": X_MARGIN * 2, "height": Y_MARGIN, "groups": []}]
+    for group_name, group in groups.items():
+        length = max(len(group_name) + 2, len(group[0]) + 4)
+        height = len(group) + 1
+        if length > max_x + X_MARGIN * 2:
+            exit("Screen is not big enough")
+        if lines[-1]["length"] + length <= max_x:  # ty: ignore[unsupported-operator]
+            lines[-1]["length"] += length + 1  # ty: ignore[unsupported-operator]
+            if lines[-1]["height"] < height:  # ty: ignore[unsupported-operator]
+                lines[-1]["height"] = height
+            lines[-1]["groups"].append(group_name)  # ty: ignore[unresolved-attribute]
         else:
-            exit()
-        for app_index, app_name in enumerate(app_groups[app_group_name]):
-            apps.append(([app_group_index, app_index], app_group_name))
-            if app_index != len(app_groups[app_group_name]) - 1:
-                printable_name = "├── " + app_name
+            lines.append(
+                {
+                    "length": X_MARGIN * 2 + length,
+                    "height": height,
+                    "groups": [group_name],
+                }
+            )
+    return lines
+
+
+def calculate_menu(current_choice: list[int], groups: dict, size: tuple[int, int]):
+    # global debug  # DEBUG
+    max_y, max_x = size
+    lines = generate_lines(groups, size)
+    pad_height = 10
+    groups_per_line = []
+    for line in lines:
+        height = line["height"]
+        groups_per_line.append(line["groups"])
+        pad_height += height
+    drawable_items = []
+    y = Y_MARGIN
+    # active = current_choice  # DEBUG
+    # debug.append(current_choice)  # DEBUG
+    for line_index, line_groups in enumerate(groups_per_line):
+        x = X_MARGIN
+        for group_index, group in enumerate(line_groups):
+            if group == "NoGroup":
+                color = COLORS["NoGroup"]
             else:
-                printable_name = "└── " + app_name
+                color = COLORS["groups"]
+            drawable_items.append((y, x, "▼ " + group, color))
+            group_length = 2 + len(group)
+            group_y = y
+            for app_index, app in enumerate(groups[group]):
+                if current_choice[0] >= len(groups_per_line):
+                    current_choice[0] = 0
+                elif current_choice[0] < 0:
+                    current_choice[0] = len(groups_per_line) - 1
+                if current_choice[0] == line_index:
+                    if current_choice[1] >= len(line_groups):
+                        current_choice[1] = 0
+                    elif current_choice[1] < 0:
+                        current_choice[1] = len(line_groups) - 1
+                    if current_choice[1] == group_index:
+                        if current_choice[2] >= len(groups[group]):
+                            current_choice[2] = 0
+                        elif current_choice[2] < 0:
+                            current_choice[2] = len(groups[group]) - 1
+                coords = [line_index, group_index, app_index]
+                if coords == current_choice:
+                    color = curses.A_REVERSE
+                    active = {
+                        "app": {app: apps_data[app]},
+                        "group": groups[group],
+                        "line": lines[line_index],
+                        "lines": lines,
+                    }
+                    if "group" not in active["app"][app].keys():
+                        active["app"][app]["group"] = "NoGroup"
+                elif group == "NoGroup":
+                    color = COLORS["NoGroup_apps"]
+                else:
+                    color = COLORS["apps"]
+                if app_index == len(groups[group]) - 1:
+                    app_name = "└── " + app
+                else:
+                    app_name = "├── " + app
+                group_y += 1
+                drawable_items.append((group_y, x, app_name, color))
+                if group_length < len(app_name):
+                    group_length = len(app_name)
+            x += group_length + 1
+        y += lines[line_index]["height"]
+        if len(lines) != 1:
+            drawable_items.append((y, X_MARGIN, SEPARATOR * (max_x - 4), 0))
+        y += 1
+    return pad_height, drawable_items, active
 
-            if [app_group_index, app_index] == current_choice:
-                drawable_apps.append(
-                    (y + app_index + 1, x, printable_name, "reverse"))
-            else:
-                drawable_apps.append(
-                    (y + app_index + 1, x, printable_name, f"{color}"))
-            if len(printable_name) > current_maximum_lenght:
-                current_maximum_lenght = len(printable_name)
 
-        if len(current_app_group_name) > current_maximum_lenght:
-            current_maximum_lenght = len(current_app_group_name)
-
-        lenght_of_last_collumn = current_maximum_lenght
-    return drawable_app_groups, drawable_apps
-
-
-def draw_menu(stdscr, drawable_app_groups, drawable_items):
-    for group in drawable_app_groups:
-        y, x, printable_name, color = group
-        stdscr.addstr(y, x, printable_name, curses.color_pair(color))
+def draw_menu(pad: curses.window, drawable_items):
     for item in drawable_items:
-        y, x, printable_name, state_or_color = item
-        if state_or_color == 'reverse':
-            stdscr.addstr(y, x, printable_name, curses.A_REVERSE)
-        else:
-            stdscr.addstr(y, x, printable_name,
-                          curses.color_pair(int(state_or_color)))
+        y, x, name, color = item
+        if color != curses.A_REVERSE:
+            color = curses.color_pair(color)
+        pad.addstr(y, x, name, color)
 
 
-def name_of_position(pos, apps, app_groups):
-    for i in apps:
-        if pos in i:
-            return app_groups[i[1]][i[0][1]]
-    exit(1)
+def open_editor(stdscr: curses.window, app_name: str) -> None:
+    curses.def_prog_mode()
+    curses.endwin()
+
+    try:
+        commands.edit_app_config(app_name)
+    finally:
+        curses.reset_prog_mode()
+        curses.curs_set(0)
+
+        stdscr.clear()
+        stdscr.clearok(True)
+        stdscr.touchwin()
+        stdscr.refresh()
 
 
-def name_of_pos_group(numb, apps):
-    for i in apps:
-        if i[0][0] == numb:
-            return i[1]
-    exit(1)
-
-
-def is_right_exist(pos, apps):
-    for i in apps:
-        if pos[0] + 1 == i[0][0]:
-            return True
-    return False
-
-
-def is_left_exist(pos, apps):
-    for i in apps:
-        if pos[0] - 1 == i[0][0]:
-            return True
-    return False
-
-
-def is_right_choice_exist(pos, apps):
-    for i in apps:
-        if [pos[0] + 1, pos[1]] in i:
-            return True
-    return False
-
-
-def is_left_choice_exist(pos, apps):
-    for i in apps:
-        if [pos[0] - 1, pos[1]] in i:
-            return True
-    return False
-
-
-def main(stdscr, app_groups):
+def main(stdscr: curses.window, mode):
+    global debug  # DEBUG
+    global app_name
     curses.curs_set(0)
     curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
     curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
-
-    current_choice = [0, 0]
-    apps = []
-
+    current_choice = [0, 0, 0]
+    groups = generate_groups(apps_data)
+    pad = curses.newpad(1, 1)
+    pad_y = 0
     while True:
-
-        drawable_app_groups, drawable_items = calculate_menu(
-            current_choice, app_groups, apps)
-
-        draw_menu(stdscr, drawable_app_groups, drawable_items)
-
+        max_y, max_x = stdscr.getmaxyx()
+        pad_height, drawable_items, active = calculate_menu(
+            current_choice, groups, stdscr.getmaxyx()
+        )
+        current_line_id, current_group_id, current_app_id = current_choice
+        pad.resize(pad_height, max_x)
+        pad.erase()
+        stdscr.erase()
+        draw_menu(pad, drawable_items)
+        stdscr.refresh()
+        pad.refresh(pad_y, 0, 0, 0, max_y - 1, max_x - 1)
         key = stdscr.getch()
-
-        name_of_current_group = ""
-        for i in apps:
-            if current_choice == i[0]:
-                name_of_current_group = i[1]
-
-        if key in UP and current_choice[1] != 0:
-            current_choice[1] -= 1
-        if (
-            key in DOWN
-            and current_choice[1] != len(app_groups[name_of_current_group]) - 1
-        ):
-            current_choice[1] += 1
-        if key in RIGHT:
-            if is_right_choice_exist(current_choice, apps):
-                current_choice[0] += 1
-            elif is_right_exist(current_choice, apps):
-                rows = len(app_groups[name_of_pos_group(
-                    current_choice[0] + 1, apps)]) - 1
-                current_choice = [current_choice[0] + 1, rows]
-        if key in LEFT:
-            if is_left_choice_exist(current_choice, apps):
-                current_choice[0] -= 1
-            elif is_left_exist(current_choice, apps):
-                rows = len(app_groups[name_of_pos_group(
-                    current_choice[0] - 1, apps)]) - 1
-                current_choice = [current_choice[0] - 1, rows]
-        if key in ENTER:
-            edit_config(name_of_position(current_choice, apps, app_groups))
-            exit()
         if key in EXIT:
             exit(0)
+        if key in UP:
+            if current_app_id == 0:
+                if current_line_id == 0:
+                    current_choice[0] = -1
+                    current_choice[2] = -1
+                else:
+                    current_choice[0] += 1
+                    current_choice[2] = -1
+            else:
+                current_choice[2] -= 1
+        if key in DOWN:
+            if current_app_id == len(active["group"]) - 1:
+                if current_line_id == len(active["lines"]) - 1:
+                    current_choice[0] = 0
+                    current_choice[2] = 0
+                else:
+                    current_choice[0] -= 1
+                    current_choice[2] = 0
+            else:
+                current_choice[2] += 1
+        if key in RIGHT:
+            if len(active["line"]["groups"]) > 1:
+                if current_group_id == len(active["line"]["groups"]) - 1:
+                    next_group_id = 0
+                else:
+                    next_group_id = current_group_id + 1
+                if current_app_id >= len(
+                    groups[active["line"]["groups"][next_group_id]]
+                ):
+                    current_choice[2] = -1
+                current_choice[1] += 1
+            else:
+                if len(active["lines"]) > 1 and current_choice[0] != 0:
+                    current_choice[0] -= 1
+                    current_choice[1] += 1
+                    current_choice[2] = -1
+        if key in LEFT:
+            if len(active["line"]["groups"]) > 1:
+                if current_group_id == 0:
+                    next_group_id = -1
+                else:
+                    next_group_id = current_group_id - 1
+                if current_app_id >= len(
+                    groups[active["line"]["groups"][next_group_id]]
+                ):
+                    current_choice[2] = -1
+                current_choice[1] -= 1
+        if key in ENTER:
+            for i in active["app"].keys():
+                app_name = i
+            if mode in ["cat", "path"]:
+                return
+            else:
+                if mode == "regular":
+                    commands.edit_app_config(app_name)
+                    exit(0)
+                elif mode == "infinite":
+                    open_editor(stdscr, app_name)
+                    pad = curses.newpad(1, 1)
+                    stdscr.clearok(True)
 
 
-def run_tui():
-    app_groups = configuration_to_app_groups(get_data())
-    wrapper(main, app_groups)
+def run_tui(mode="infinite"):
+    wrapper(main, mode)
+    if mode == "cat":
+        commands.cat(app_name)
+    elif mode == "path":
+        commands.path(app_name)
