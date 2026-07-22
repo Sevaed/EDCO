@@ -1,7 +1,7 @@
 import json
 import os
 
-PATH_TO_CONFIG = os.path.expanduser("~/.config/EDCO__test__.jsonc")
+PATH_TO_CONFIG = os.path.expanduser("~/.config/EDCO.jsonc")
 EXAMPLE_CONFIG = {
     "apps": {
         "EDCO": {"path": PATH_TO_CONFIG},
