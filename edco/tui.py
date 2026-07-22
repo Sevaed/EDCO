@@ -200,7 +200,7 @@ def main(stdscr: curses.window, mode):
                     current_choice[0] = -1
                     current_choice[2] = -1
                 else:
-                    current_choice[0] += 1
+                    current_choice[0] -= 1
                     current_choice[2] = -1
             else:
                 current_choice[2] -= 1
@@ -210,7 +210,7 @@ def main(stdscr: curses.window, mode):
                     current_choice[0] = 0
                     current_choice[2] = 0
                 else:
-                    current_choice[0] -= 1
+                    current_choice[0] += 1
                     current_choice[2] = 0
             else:
                 current_choice[2] += 1
