@@ -5,7 +5,7 @@ import os
 import sys
 import json
 
-EDITOR = str(os.environ.get("EDITOR", "nvim"))
+EDITOR = str(os.environ.get("EDITOR", "vim"))
 ASCII_CODES = {
     "RESET": "\033[0m",
     "BOLD": "\033[1m",
