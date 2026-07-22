@@ -7,6 +7,7 @@ from click_help_colors import HelpColorsCommand
 CONTEXT_SETTINGS = dict(
     token_normalize_func=lambda x: x.lower(), help_option_names=["-h", "--help"]
 )
+MODES = ["regular", "infinite", "cat", "path"]
 
 
 @click.command(
@@ -17,13 +18,17 @@ CONTEXT_SETTINGS = dict(
 )
 @click.argument("app_name", required=False)
 @click.option(
-    "-i",
-    "--infinite",
-    "infinite",
-    is_flag=True,
-    help="TUI will not close after closing editor",
+    "-m",
+    "--mode",
+    "mode",
+    type=str,
+    help="Mode of TUI {regular (default): choose app to configure, closes after edit, infinite: choose app to configure, does not closes after edit, cat: choose app to print it's config, path: choose app to print path to it's config}",
+    metavar="<mode>",
+    default="regular",
 )
-@click.option("-l", "--list", "list", is_flag=True, help="shows you yours added apps")
+@click.option(
+    "-l", "--list", "list_apps", is_flag=True, help="shows you yours added apps"
+)
 @click.option(
     "-c",
     "--cat",
@@ -96,34 +101,37 @@ CONTEXT_SETTINGS = dict(
     help="provides group for --add if needed",
     metavar="<group_name>",
 )
+@click.pass_context
 def main(
+    ctx,
     app_name,
     editor,
     cat,
     path,
-    list,
+    list_apps,
     delete,
     add,
     group,
     delete_group,
     force_delete,
     force_delete_group,
-    infinite,
+    mode,
 ):
     """
     (Better help in future)\n
     Use without arguments to summon TUI, use with app_name to edit config for given app
     """
+    if mode not in MODES:
+        raise click.UsageError("Wrong mode, use --help for usage")
     sum_of_options = sum(
         map(
             bool,
             [
-                infinite,
                 app_name,
                 editor,
                 cat,
                 path,
-                list,
+                list_apps,
                 delete,
                 add,
                 group,
@@ -134,12 +142,10 @@ def main(
         )
     )
     if sum_of_options == 0:
-        tui.run_tui()
+        tui.run_tui(mode)
     elif sum_of_options > 2:
         raise click.UsageError("Too many options")
     elif sum_of_options == 1:
-        if infinite:
-            tui.run_tui(True)
         if group:
             raise click.UsageError(
                 "--group cannot be used without --add, use --help for usage"
@@ -154,7 +160,7 @@ def main(
             cmd.cat(cat)
         if path:
             cmd.path(path)
-        if list:
+        if list_apps:
             cmd.print_names()
         if delete:
             cmd.del_elements("name", delete)
@@ -166,6 +172,8 @@ def main(
             cmd.del_elements("name", force_delete, True)
         if force_delete_group:
             cmd.del_elements("group", force_delete_group, True)
+        if ctx.get_parameter_source("mode") == click.core.ParameterSource.COMMANDLINE:
+            tui.run_tui(mode)
     else:
         if app_name and editor:
             cmd.edit_app_config(app_name, editor)

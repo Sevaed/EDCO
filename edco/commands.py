@@ -1,7 +1,5 @@
 # from os.path import abspath
-from edco.data import get_apps_data
-from edco.data import PATH_TO_CONFIG
-
+from . import data
 import subprocess
 import os
 import sys
@@ -18,7 +16,8 @@ ASCII_CODES = {
     "RED": "\033[1;31m",
 }
 
-apps_data = get_apps_data()["apps"]
+apps_data = data.get_apps_data()
+backup_config = data.get_backup_config()
 
 
 def list_apps_print_names():
@@ -28,9 +27,9 @@ def list_apps_print_names():
 
 
 def rewrite_config_file():
-    prev = get_apps_data()
+    prev = data.get_data()
     prev["apps"] = apps_data
-    with open(PATH_TO_CONFIG, "w") as config:
+    with open(data.PATH_TO_CONFIG, "w") as config:
         json.dump(prev, config)
 
 
@@ -43,7 +42,13 @@ def is_enough_args(args, numb=0):
 
 
 def do_backup():
-    exit("TODO")
+    if backup_config["type"] == "none":
+        pass
+    elif backup_config["type"] == "script":
+        path = backup_config["configs"]["script"]["config"]["path"].strip()
+        print("Backup started")
+        subprocess.run(path.split(" "), check=True)
+        print("\nBackup finished")
 
 
 def edit_app_config(name, editor=EDITOR):
@@ -52,7 +57,7 @@ def edit_app_config(name, editor=EDITOR):
     else:
         path = get_app_path(name)
         subprocess.call([editor, path])
-    if get_apps_data()["backup"] != "none":
+    if backup_config["type"] != "none":
         do_backup()
 
 
@@ -90,6 +95,8 @@ def add_app(*args):
     if not group:
         apps_data[name] = {"path": os.path.abspath(path)}
     else:
+        if group == "NoGroup":
+            exit("Reserved group name")
         apps_data[name] = {"path": os.path.abspath(path), "group": group}
     rewrite_config_file()
     print(f"{path} was saved as {name}")
