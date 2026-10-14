@@ -1,4 +1,1 @@
-TODO:
-  make TUI
-  write better help
-  write normal README
+project moved to [codeberg](https://codeberg.org/Sevaed/EDCO) maybe one day i will setup mirroring
