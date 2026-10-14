@@ -1,8 +1,8 @@
-from . import commands
-from . import data
 import curses
 from curses import wrapper
+from sys import exit
 
+from . import commands, data
 
 UP = [curses.KEY_UP, ord("k"), ord("w")]
 DOWN = [curses.KEY_DOWN, ord("j"), ord("s")]
@@ -20,7 +20,6 @@ COLORS = {"groups": 1, "NoGroup": 3, "apps": 2, "NoGroup_apps": 4}
 
 
 apps_data = data.get_apps_data()
-backup_config = data.get_backup_config()
 
 debug = []
 
@@ -59,8 +58,7 @@ def generate_lines(groups: dict, size: tuple[int, int]) -> list[dict]:
             exit("Screen is not big enough")
         if lines[-1]["length"] + length <= max_x:  # ty: ignore[unsupported-operator]
             lines[-1]["length"] += length + 1  # ty: ignore[unsupported-operator]
-            if lines[-1]["height"] < height:  # ty: ignore[unsupported-operator]
-                lines[-1]["height"] = height
+            lines[-1]["height"] = max(lines[-1]["height"], height)
             lines[-1]["groups"].append(group_name)  # ty: ignore[unresolved-attribute]
         else:
             lines.append(
@@ -121,7 +119,7 @@ def calculate_menu(current_choice: list[int], groups: dict, size: tuple[int, int
                         "line": lines[line_index],
                         "lines": lines,
                     }
-                    if "group" not in active["app"][app].keys():
+                    if "group" not in active["app"][app]:
                         active["app"][app]["group"] = "NoGroup"
                 elif group == "NoGroup":
                     color = COLORS["NoGroup_apps"]
@@ -133,8 +131,7 @@ def calculate_menu(current_choice: list[int], groups: dict, size: tuple[int, int
                     app_name = "├── " + app
                 group_y += 1
                 drawable_items.append((group_y, x, app_name, color))
-                if group_length < len(app_name):
-                    group_length = len(app_name)
+                group_length = max(group_length, len(app_name))
             x += group_length + 1
         y += lines[line_index]["height"]
         if len(lines) != 1:
@@ -242,7 +239,7 @@ def main(stdscr: curses.window, mode):
                     current_choice[2] = -1
                 current_choice[1] -= 1
         if key in ENTER:
-            for i in active["app"].keys():
+            for i in active["app"]:
                 app_name = i
             if mode in ["cat", "path"]:
                 return

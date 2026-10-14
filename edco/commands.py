@@ -1,9 +1,11 @@
-# from os.path import abspath
-from . import data
-import subprocess
-import os
-import sys
 import json
+import os
+import re
+import subprocess
+import sys
+from sys import exit
+
+from . import data
 
 EDITOR = str(os.environ.get("EDITOR", "vim"))
 ASCII_CODES = {
@@ -18,6 +20,14 @@ ASCII_CODES = {
 
 apps_data = data.get_apps_data()
 backup_config = data.get_backup_config()
+groups = {"NoGroup": []}
+for name, app in apps_data.items():
+    if "group" in app:
+        if app["group"] not in groups:
+            groups[app["group"]] = []
+        groups[app["group"]].append(name)
+    else:
+        groups["NoGroup"].append(name)
 
 
 def list_apps_print_names():
@@ -30,7 +40,7 @@ def rewrite_config_file():
     prev = data.get_data()
     prev["apps"] = apps_data
     with open(data.PATH_TO_CONFIG, "w") as config:
-        json.dump(prev, config)
+        json.dump(prev, config, indent=4)
 
 
 def is_enough_args(args, numb=0):
@@ -42,13 +52,14 @@ def is_enough_args(args, numb=0):
 
 
 def do_backup():
-    if backup_config["type"] == "none":
-        pass
-    elif backup_config["type"] == "script":
-        path = backup_config["configs"]["script"]["config"]["path"].strip()
-        print("Backup started")
-        subprocess.run(path.split(" "), check=True)
-        print("\nBackup finished")
+    match backup_config["typr"]:
+        case "none":
+            pass
+        case "script":
+            path = backup_config["configs"]["script"]["path"].strip()
+            print("Backup started")
+            subprocess.run(path.split(" "), check=True)
+            print("\nBackup finished")
 
 
 def edit_app_config(name, editor=EDITOR):
@@ -85,21 +96,56 @@ def add_app(*args):
     is_enough_args(args, 2)
     name = args[0]
     path = args[1]
-    if len(args) == 3:
-        group = args[2]
+    if os.path.isdir(path):
+        if input(
+            f"{path} is a directory, do you want to add all files from it as apps in group {name}? (Y/n)  "
+        ):
+            exit(0)
+        if name in groups:
+            exit("Group with this name already exists")
+        for app_path in os.listdir(path):
+            rel_path = os.path.join(path, app_path)
+            if os.path.isdir(rel_path):
+                continue
+            default = re.sub("\\..+$", "", app_path)
+            ans = None
+            if default in apps_data:
+                while type(ans) != str:
+                    ans = input(f"How to name {rel_path}?\n# ")
+                    if type(ans) == str and ans.strip() == "":
+                        ans = None
+                    if ans in apps_data:
+                        print(f"{ans} already taken, choose another name")
+                        ans = None
+                ans = ans.strip()  # ty: ignore[unresolved-attribute]
+            else:
+                while type(ans) != str:
+                    ans = input(f"How to name {rel_path}?\n(default: {default}) # ")
+                    if ans in apps_data:
+                        print(f"{ans} already taken, choose another name")
+                        ans = None
+                ans = ans.strip()  # ty: ignore[unresolved-attribute]
+                if ans == "":
+                    app_name = default
+                else:
+                    app_name = ans
+            apps_data[app_name] = {"path": os.path.abspath(rel_path), "group": name}
     else:
-        group = None
+        if len(args) == 3:
+            group = args[2]
+        else:
+            group = None
 
-    if name in apps_data:
-        exit("This name already taken")
-    if not group:
-        apps_data[name] = {"path": os.path.abspath(path)}
-    else:
-        if group == "NoGroup":
-            exit("Reserved group name")
-        apps_data[name] = {"path": os.path.abspath(path), "group": group}
+        if name in apps_data:
+            exit("This name already taken")
+        if not group:
+            apps_data[name] = {"path": os.path.abspath(path)}
+        else:
+            if group == "NoGroup":
+                exit("Reserved group name")
+            apps_data[name] = {"path": os.path.abspath(path), "group": group}
+        print(f"{path} was saved as {name}")
     rewrite_config_file()
-    print(f"{path} was saved as {name}")
 
 
 def del_elements(type_of_element, name_of_element, force=False):

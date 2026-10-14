@@ -7,7 +7,7 @@ name = "edco"
 dynamic = ["version"]
 description = "EDCO - EDit COnfigs, makes your configuration easier"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 authors = [{ name = "Sevaed", email = "seva.romanovsky@gmail.com" }]
 license = { text = "MIT" }
 classifiers = [

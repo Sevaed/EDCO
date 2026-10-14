@@ -1,12 +1,13 @@
-from . import commands as cmd
-
-from . import tui
 import click
 from click_help_colors import HelpColorsCommand
 
-CONTEXT_SETTINGS = dict(
-    token_normalize_func=lambda x: x.lower(), help_option_names=["-h", "--help"]
-)
+from . import commands as cmd
+from . import tui
+
+CONTEXT_SETTINGS = {
+    "token_normalize_func": lambda x: x.lower(),
+    "help_option_names": ["-h", "--help"],
+}
 MODES = ["regular", "infinite", "cat", "path"]
 
 
@@ -90,7 +91,7 @@ MODES = ["regular", "infinite", "cat", "path"]
     "--add",
     "add",
     type=(click.Path(), str),
-    help="adds <path> as <name> into yours apps_list",
+    help="adds <path> as <name> into yours apps_list\nif <path> is directory adds directory as group <name> and offers to add every file in directory as app",
     metavar="<app_config_path> <app_name>",
 )
 @click.option(
@@ -122,7 +123,19 @@ def main(
     Use without arguments to summon TUI, use with app_name to edit config for given app
     """
     if mode not in MODES:
-        raise click.UsageError("Wrong mode, use --help for usage")
+        matches = []
+        for const_mode in MODES:
+            if const_mode.startswith(mode.strip()):
+                matches.append(const_mode)
+        if not matches:
+            raise click.UsageError("Wrong mode, use --help for usage")
+        else:
+            if len(matches) == 1:
+                mode = matches[0]
+            else:
+                raise click.UsageError(
+                    f"Option {mode} is ambiguous; possibilities: {matches}"
+                )
     sum_of_options = sum(
         map(
             bool,
